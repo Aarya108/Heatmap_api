@@ -1,3 +1,4 @@
+import os
 import pandas as pd
 import folium
 import json
@@ -53,8 +54,13 @@ for _, row in df.iterrows():
         icon=folium.Icon(color="blue", icon="info-sign")
     ).add_to(marker_cluster)
 
-# Save the map in the static directory
-heatmap_path = "static/choropleth_heatmap.html"
+# Ensure the 'static' directory exists before saving the file
+static_dir = "static"
+if not os.path.exists(static_dir):
+    os.makedirs(static_dir)
+
+# Save the heatmap in the static directory
+heatmap_path = os.path.join(static_dir, "choropleth_heatmap.html")
 m.save(heatmap_path)
 
 # Flask Routes
@@ -64,7 +70,6 @@ def index():
 
 @app.route("/heatmap")
 def heatmap():
-    # Serve an HTML page that embeds the heatmap from the static folder.
     return '''
     <html>
       <head>
