@@ -1,10 +1,16 @@
 import pandas as pd
 import folium
 import json
+import os
 from folium.plugins import MarkerCluster
-from flask import Flask
+from flask import Flask, render_template
 
 app = Flask(__name__)
+
+# Ensure 'static' directory exists before saving the heatmap
+STATIC_DIR = "static"
+if not os.path.exists(STATIC_DIR):
+    os.makedirs(STATIC_DIR)
 
 # File paths
 csv_file = "student_mobility_with_coordinates.csv"
@@ -15,7 +21,6 @@ df = pd.read_csv(csv_file)
 
 # Fix country name mismatches to align with GeoJSON
 name_mapping = {
-    
     "USA": "United States of America",
     "United States": "United States of America",
     "Russia Federation": "Russia",
@@ -30,8 +35,6 @@ name_mapping = {
     "Republic of Mauritius": "Mauritius",
     "Serbia": "Republic of Serbia",
     "Republic of Singapore": "Singapore"
-
-
 }
 df["Country"] = df["Country"].replace(name_mapping)
 
@@ -75,13 +78,13 @@ for _, row in df.iterrows():
     ).add_to(marker_cluster)
 
 # Save the heatmap to the static folder
-heatmap_path = "static/choropleth_heatmap.html"
+heatmap_path = os.path.join(STATIC_DIR, "choropleth_heatmap.html")
 m.save(heatmap_path)
 
 # Flask Routes
 @app.route("/")
 def index():
-    return '<h2>Heatmap Available <a href="/heatmap" target="_blank">Here</a></h2>'
+    return render_template("index.html", heatmap_path=heatmap_path)
 
 @app.route("/heatmap")
 def heatmap():
@@ -97,4 +100,4 @@ def heatmap():
     '''
 
 if __name__ == "__main__":
-    app.run(debug=True)
+    app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 5000)))
