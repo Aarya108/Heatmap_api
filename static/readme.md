@@ -1,0 +1,1 @@
+"This is the static directory for storing generated heatmaps."
