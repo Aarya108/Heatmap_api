@@ -1,3 +1,4 @@
+import os
 import pandas as pd
 import folium
 import json
@@ -6,55 +7,66 @@ from flask import Flask
 
 app = Flask(__name__)
 
-# Load the data
-csv_file = "student_mobility_with_coordinates.csv"
-geojson_file = "world-countries.json"
+# File paths
+csv_file = os.path.join(os.path.dirname(__file__), "student_mobility_with_coordinates.csv")
+geojson_file = os.path.join(os.path.dirname(__file__), "world-countries.json")
 
+# Load the student mobility data
 df = pd.read_csv(csv_file)
 
-# Fix country name mismatches
+# Fix country name mismatches to align with GeoJSON
 name_mapping = {
-    "USA": "United States",
-    "Russia": "Russian Federation",
-    "South Korea": "Korea, Republic of",
-    "Iran": "Iran, Islamic Republic of",
-    "Vietnam": "Viet Nam"
+    "USA": "United States of America",
+    "United States": "United States of America",
+    "Russia Federation": "Russia",
+    "South Korea": "South Korea",
+    "Republic of Korea": "South Korea",
+    "Iran, Islamic Republic of": "Iran",
+    "Vietnam": "Vietnam",
+    "Viet Nam": "Vietnam",
+    "Hong Kong": "China",  # Hong Kong is part of China in most GeoJSON files
+    "Brunei Darussalam": "Brunei",
+    "Republic of Malta": "Malta",
+    "Republic of Mauritius": "Mauritius",
+    "Serbia": "Republic of Serbia",
+    "Republic of Singapore": "Singapore"
 }
 df["Country"] = df["Country"].replace(name_mapping)
 
-# Load the GeoJSON file
+# Load GeoJSON world map data
 with open(geojson_file, "r", encoding="utf-8") as file:
     world_geo = json.load(file)
 
-# Create a Folium map
+# Create a Folium map centered globally
 m = folium.Map(location=[20, 0], zoom_start=2, tiles="cartodb positron")
 
-# Add Choropleth layer
+# Add Choropleth layer for heatmap visualization
 folium.Choropleth(
     geo_data=world_geo,
-    name="Choropleth",
+    name="Choropleth Heatmap",
     data=df,
     columns=["Country", "Number_of_Students"],
     key_on="feature.properties.name",
     fill_color="YlOrRd",
     fill_opacity=0.7,
     line_opacity=0.2,
-    legend_name="Number of Students Studying Abroad"
+    legend_name="Number of Students Studying Abroad",
 ).add_to(m)
 
 # Add a Marker Cluster for better visualization
 marker_cluster = MarkerCluster().add_to(m)
 
-# Add country markers with student numbers
+# Add markers for each country
 for _, row in df.iterrows():
     folium.Marker(
         location=[row["Latitude"], row["Longitude"]],
         popup=f'{row["Country"]}: {row["Number_of_Students"]} students',
-        icon=folium.Icon(color="blue", icon="info-sign")
+        tooltip=row["Country"],
+        icon=folium.Icon(color="blue", icon="info-sign"),
     ).add_to(marker_cluster)
 
-# Save the map in the static directory
-heatmap_path = "static/choropleth_heatmap.html"
+# Save the heatmap to the static folder
+heatmap_path = os.path.join(os.path.dirname(__file__), "static/choropleth_heatmap.html")
 m.save(heatmap_path)
 
 # Flask Routes
@@ -64,7 +76,6 @@ def index():
 
 @app.route("/heatmap")
 def heatmap():
-    # Serve an HTML page that embeds the heatmap from the static folder.
     return '''
     <html>
       <head>
